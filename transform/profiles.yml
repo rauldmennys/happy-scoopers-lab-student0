@@ -1,0 +1,21 @@
+# Conexión al WAREHOUSE (:5433). dbt jamás toca el OLTP.
+# Para desarrollo local ejecutamos dbt con DBT_PROFILES_DIR=. (ver Makefile)
+happy_scoopers:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: localhost
+      port: 5433
+      user: dwh
+      password: dwh
+      dbname: happy_scoopers_dwh
+      schema: analytics
+      threads: 4
+    # Anexo B: el MISMO proyecto contra otro motor.
+    # Uso: dbt build --target duckdb
+    duckdb:
+      type: duckdb
+      path: ../warehouse.duckdb
+      schema: analytics
+      threads: 4

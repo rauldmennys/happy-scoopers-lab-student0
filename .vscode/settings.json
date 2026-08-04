@@ -1,0 +1,14 @@
+{
+  "//": "Oculta la plomería: el alumno solo ve lo que toca.",
+  "files.exclude": {
+    "initdb": true,
+    "pgadmin-servers.json": true,
+    ".venv": true,
+    "**/target": true,
+    "**/logs": true,
+    "**/dbt_packages": true,
+    "**/package-lock.yml": true,
+    "**/__pycache__": true,
+    "**/.dlt": true
+  }
+}

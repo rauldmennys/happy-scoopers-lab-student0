@@ -1,0 +1,97 @@
+services:
+  # ------------------------------------------------------------
+  # Base de datos FUENTE (OLTP) - simula el sistema operacional
+  # ------------------------------------------------------------
+  oltp:
+    image: postgres:16
+    container_name: happy_scoopers_oltp
+    environment:
+      POSTGRES_DB: happy_scoopers
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      # Los scripts se ejecutan en orden alfabético SOLO la primera vez
+      # (cuando el volumen de datos está vacío)
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+      - oltp_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d happy_scoopers"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ------------------------------------------------------------
+  # Base de datos DESTINO (Data Warehouse) - donde vivirá dbt
+  # Separada a propósito: simula el patrón real fuente != destino
+  # ------------------------------------------------------------
+  dwh:
+    image: postgres:16
+    container_name: happy_scoopers_dwh
+    environment:
+      POSTGRES_DB: happy_scoopers_dwh
+      POSTGRES_USER: dwh
+      POSTGRES_PASSWORD: dwh
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./initdb-dwh:/docker-entrypoint-initdb.d:ro
+      - dwh_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dwh -d happy_scoopers_dwh"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ------------------------------------------------------------
+  # BI: Metabase apuntando a marts con el rol bi_reader
+  # Primer arranque: localhost:3000 -> crear cuenta admin ->
+  # Add database: Postgres, host `dwh`, puerto 5432 (interno),
+  # BD happy_scoopers_dwh, usuario bi_reader / bi_reader
+  # ------------------------------------------------------------
+  metabase:
+    image: metabase/metabase:latest
+    container_name: happy_scoopers_bi
+    ports:
+      - "3000:3000"
+    volumes:
+      - metabase_data:/metabase-data
+    environment:
+      MB_DB_FILE: /metabase-data/metabase.db
+    depends_on:
+      dwh:
+        condition: service_healthy
+
+  # ------------------------------------------------------------
+  # pgAdmin: taller del INGENIERO (ve todo: raw, staging, marts)
+  # Complementa a Metabase, que es la vitrina del CONSUMIDOR
+  # (solo marts). UI en localhost:5050
+  # Login: admin@happyscoopers.com / admin
+  # Los dos servidores vienen pre-registrados; al abrirlos pedirá
+  # la contraseña de cada uno (postgres / dwh).
+  # ------------------------------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: happy_scoopers_pgadmin
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@happyscoopers.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    volumes:
+      - ./pgadmin-servers.json:/pgadmin4/servers.json:ro
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      oltp:
+        condition: service_healthy
+      dwh:
+        condition: service_healthy
+
+volumes:
+  oltp_data:
+  dwh_data:
+  metabase_data:
+  pgadmin_data:
