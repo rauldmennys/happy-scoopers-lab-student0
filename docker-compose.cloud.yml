@@ -59,10 +59,7 @@ services:
       TTYD_PASS: ${PGADMIN_PASSWORD:-admin}
     # -W habilita escritura; -b fija el basepath tras el proxy;
     # -c usuario:clave exige autenticación; abre bash como shell.
-    command: >
-      ttyd -W -b /terminal
-      -c $${TTYD_USER}:$${TTYD_PASS}
-      bash
+    command: sh -c 'ttyd -W -b /terminal -c "$$TTYD_USER:$$TTYD_PASS" bash'
     depends_on:
       - oltp
 

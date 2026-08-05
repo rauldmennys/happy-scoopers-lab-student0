@@ -22,7 +22,7 @@
 	# Terminal web: shell dentro del navegador, sobre HTTPS.
 	# Resuelve el bloqueo de SSH/RDP en laboratorios: el estudiante
 	# trabaja con solo un navegador y el puerto 443.
-	handle_path /terminal/* {
+	handle /terminal/* {
 		reverse_proxy ttyd:7681
 	}
 
