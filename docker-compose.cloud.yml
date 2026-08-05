@@ -1,0 +1,91 @@
+# ==============================================================
+# OVERLAY para el laboratorio en la nube (Azure).
+# Se usa ENCIMA del compose base:
+#   docker compose -f docker-compose.yml -f docker-compose.cloud.yml up -d
+#
+# Qué cambia respecto al entorno local:
+#   1. Agrega Caddy: punto de entrada único con HTTPS automático.
+#   2. Cierra al mundo los puertos de pgAdmin y Metabase (ahora se
+#      entra por Caddy, no directo).
+#   3. Las bases quedan escuchando SOLO en localhost de la VM:
+#      el estudiante llega a ellas por túnel SSH, nunca por Internet.
+#
+# Requiere un archivo .env junto a este, con:
+#   DOMAIN=lab-ana.eastus.cloudapp.azure.com
+#   ACME_EMAIL=instructor@ejemplo.com
+# ==============================================================
+services:
+  # !override reemplaza la lista de puertos del compose base.
+  # (!reset la borraría por completo; ojo con la diferencia.)
+  oltp:
+    ports: !override
+      - "127.0.0.1:5432:5432"
+
+  dwh:
+    ports: !override
+      - "127.0.0.1:5433:5432"
+
+  metabase:
+    ports: !reset []            # ya no se expone 3000 al mundo
+    environment:
+      MB_DB_FILE: /metabase-data/metabase.db
+      MB_SITE_URL: https://${DOMAIN}/metabase
+
+  pgadmin:
+    ports: !reset []            # ya no se expone 5050 al mundo
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@happyscoopers.com
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      SCRIPT_NAME: /pgadmin     # pgAdmin servido bajo un subpath
+
+  # ------------------------------------------------------------
+  # ttyd: una TERMINAL en el navegador, servida sobre HTTPS por
+  # Caddy en /terminal. Resuelve laboratorios donde SSH/RDP están
+  # bloqueados: el estudiante solo necesita el puerto 443.
+  # Entra directo a la carpeta del proyecto, con el venv activado.
+  # Protegido con usuario/clave (los mismos de pgAdmin por defecto).
+  # ------------------------------------------------------------
+  ttyd:
+    image: tsl0922/ttyd:latest
+    container_name: happy_scoopers_ttyd
+    restart: unless-stopped
+    working_dir: /opt/happy-scoopers
+    volumes:
+      - ./..:/opt/happy-scoopers          # el proyecto, para trabajar en él
+    environment:
+      TTYD_USER: ${TTYD_USER:-alumno}
+      TTYD_PASS: ${PGADMIN_PASSWORD:-admin}
+    # -W habilita escritura; -b fija el basepath tras el proxy;
+    # -c usuario:clave exige autenticación; abre bash como shell.
+    command: >
+      ttyd -W -b /terminal
+      -c $${TTYD_USER}:$${TTYD_PASS}
+      bash
+    depends_on:
+      - oltp
+
+  caddy:
+    image: caddy:2
+    container_name: happy_scoopers_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:-lab@example.com}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./web:/srv:ro
+      - caddy_data:/data        # aquí viven los certificados TLS
+      - caddy_config:/config
+    depends_on:
+      - pgadmin
+      - metabase
+      - ttyd
+
+volumes:
+  caddy_data:
+  caddy_config:

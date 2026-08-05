@@ -1,0 +1,34 @@
+# ==============================================================
+# Caddy: el punto de entrada web único del laboratorio.
+# HTTPS automático (Let's Encrypt) sobre el FQDN de Azure.
+# Rutas:
+#   /            -> página de inicio del laboratorio
+#   /pgadmin/*   -> pgAdmin (explora oltp y dwh)
+#   /metabase/*  -> Metabase (BI sobre marts)
+#   /terminal/*  -> ttyd (shell en el navegador, para labs sin SSH)
+# ==============================================================
+{$DOMAIN} {
+	encode gzip
+
+	# pgAdmin espera conservar el prefijo (SCRIPT_NAME=/pgadmin)
+	reverse_proxy /pgadmin* pgadmin:80
+
+	# Metabase espera el prefijo RECORTADO (MB_SITE_URL lo declara)
+	redir /metabase /metabase/
+	handle_path /metabase/* {
+		reverse_proxy metabase:3000
+	}
+
+	# Terminal web: shell dentro del navegador, sobre HTTPS.
+	# Resuelve el bloqueo de SSH/RDP en laboratorios: el estudiante
+	# trabaja con solo un navegador y el puerto 443.
+	handle_path /terminal/* {
+		reverse_proxy ttyd:7681
+	}
+
+	# Página de inicio
+	handle {
+		root * /srv
+		file_server
+	}
+}
