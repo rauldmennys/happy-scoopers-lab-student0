@@ -4,6 +4,7 @@ services:
   # ------------------------------------------------------------
   oltp:
     image: postgres:16
+    restart: unless-stopped
     container_name: happy_scoopers_oltp
     environment:
       POSTGRES_DB: happy_scoopers
@@ -28,6 +29,7 @@ services:
   # ------------------------------------------------------------
   dwh:
     image: postgres:16
+    restart: unless-stopped
     container_name: happy_scoopers_dwh
     environment:
       POSTGRES_DB: happy_scoopers_dwh
@@ -52,6 +54,7 @@ services:
   # ------------------------------------------------------------
   metabase:
     image: metabase/metabase:latest
+    restart: unless-stopped
     container_name: happy_scoopers_bi
     ports:
       - "3000:3000"
@@ -73,6 +76,7 @@ services:
   # ------------------------------------------------------------
   pgadmin:
     image: dpage/pgadmin4:latest
+    restart: unless-stopped
     container_name: happy_scoopers_pgadmin
     ports:
       - "5050:80"
