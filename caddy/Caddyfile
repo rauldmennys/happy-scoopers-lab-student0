@@ -11,8 +11,14 @@
 	encode gzip
 
 	# pgAdmin espera conservar el prefijo (SCRIPT_NAME=/pgadmin)
-	reverse_proxy /pgadmin* pgadmin:80
-
+	redir /pgadmin /pgadmin/
+	handle /pgadmin/* {
+		reverse_proxy pgadmin:80 {
+			header_up X-Script-Name /pgadmin
+			header_up X-Scheme https
+		}
+	}
+	
 	# Metabase espera el prefijo RECORTADO (MB_SITE_URL lo declara)
 	redir /metabase /metabase/
 	handle_path /metabase/* {
