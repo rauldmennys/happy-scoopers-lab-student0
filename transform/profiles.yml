@@ -5,8 +5,8 @@ happy_scoopers:
   outputs:
     dev:
       type: postgres
-      host: localhost
-      port: 5433
+      host: "{{ env_var('DBT_HOST', 'localhost') }}"
+      port: "{{ env_var('DBT_PORT', '5433') | int }}"
       user: dwh
       password: dwh
       dbname: happy_scoopers_dwh
