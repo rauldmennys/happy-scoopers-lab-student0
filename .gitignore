@@ -1,3 +1,18 @@
+# Estado de la VM (generado por cloud-init)
+.bootstrap-completo
+
+# Variables locales/secretas (NUNCA versionar)
+.env
+
+# Config local de dbt
+transform/.user.yml
+
+# DuckDB local (target duckdb)
+warehouse.duckdb
+*.duckdb
+
+# Sistema
+.DS_Store
 .venv/
 transform/target/
 transform/logs/
